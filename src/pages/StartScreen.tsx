@@ -78,6 +78,14 @@ export default function StartScreen({ onStart }: Props) {
                   </ChoiceButton>
                 ))}
               </Grid>
+              {role === "Custom" && (
+                <Input
+                  className="mt-3"
+                  placeholder="e.g. Machine Learning Engineer, Marketing Manager…"
+                  value={customRole}
+                  onChange={(e) => setCustomRole(e.target.value)}
+                />
+              )}
             </Section>
 
             <Section label="Difficulty">
