@@ -1,0 +1,10 @@
+project_id = "ovjryojbkpdjqsbpkdni"
+
+[functions.start-interview]
+verify_jwt = false
+
+[functions.submit-answer]
+verify_jwt = false
+
+[functions.end-interview]
+verify_jwt = false
