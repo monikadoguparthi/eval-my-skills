@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -12,6 +13,7 @@ const ROLES = [
   "Product Manager",
   "Data Scientist",
   "DevOps Engineer",
+  "Custom",
 ];
 const DIFFICULTIES = ["Easy", "Medium", "Hard"];
 const DURATIONS = [20, 30, 60];
@@ -22,19 +24,25 @@ interface Props {
 
 export default function StartScreen({ onStart }: Props) {
   const [role, setRole] = useState(ROLES[0]);
+  const [customRole, setCustomRole] = useState("");
   const [difficulty, setDifficulty] = useState("Medium");
   const [duration, setDuration] = useState(30);
   const [loading, setLoading] = useState(false);
 
   const start = async () => {
+    const finalRole = role === "Custom" ? customRole.trim() : role;
+    if (!finalRole) {
+      toast.error("Please enter a role");
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("start-interview", {
-        body: { role, difficulty, durationMinutes: duration },
+        body: { role: finalRole, difficulty, durationMinutes: duration },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      onStart({ sessionId: data.sessionId, questions: data.questions, durationMinutes: data.durationMinutes, role });
+      onStart({ sessionId: data.sessionId, questions: data.questions, durationMinutes: data.durationMinutes, role: finalRole });
     } catch (e: any) {
       toast.error(e.message || "Failed to start interview");
     } finally {
@@ -70,6 +78,14 @@ export default function StartScreen({ onStart }: Props) {
                   </ChoiceButton>
                 ))}
               </Grid>
+              {role === "Custom" && (
+                <Input
+                  className="mt-3"
+                  placeholder="e.g. Machine Learning Engineer, Marketing Manager…"
+                  value={customRole}
+                  onChange={(e) => setCustomRole(e.target.value)}
+                />
+              )}
             </Section>
 
             <Section label="Difficulty">
