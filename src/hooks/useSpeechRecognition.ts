@@ -7,7 +7,6 @@ export function useSpeechRecognition(onTranscript: (text: string) => void) {
   const recRef = useRef<any>(null);
   const cbRef = useRef(onTranscript);
 
-  // Keep callback ref up to date so the SR instance always invokes the latest handler
   useEffect(() => {
     cbRef.current = onTranscript;
   }, [onTranscript]);
@@ -16,7 +15,10 @@ export function useSpeechRecognition(onTranscript: (text: string) => void) {
     const SR =
       (typeof window !== "undefined" && (window as any).SpeechRecognition) ||
       (typeof window !== "undefined" && (window as any).webkitSpeechRecognition);
-    if (!SR) return;
+    if (!SR) {
+      setSupported(false);
+      return;
+    }
     setSupported(true);
     const rec = new SR();
     rec.continuous = true;
@@ -30,8 +32,16 @@ export function useSpeechRecognition(onTranscript: (text: string) => void) {
       if (finalText) cbRef.current(finalText);
     };
     rec.onend = () => setListening(false);
+    rec.onstart = () => setListening(true);
     rec.onerror = (ev: any) => {
-      console.error("SpeechRecognition error:", ev?.error || ev);
+      const err = ev?.error || ev;
+      console.error("SpeechRecognition error:", err);
+      if (err === "not-allowed" || err === "service-not-allowed") {
+        alert("Microphone permission denied. Please allow mic access in your browser settings and reload.");
+      } else if (err === "no-speech") {
+        // ignore — user just didn't speak yet
+        return;
+      }
       setListening(false);
     };
     recRef.current = rec;
@@ -50,6 +60,10 @@ export function useSpeechRecognition(onTranscript: (text: string) => void) {
       setListening(true);
     } catch (e) {
       console.error("SR start failed:", e);
+      // Already-started error: stop and restart
+      try {
+        recRef.current.stop();
+      } catch {}
     }
   };
   const stop = () => {
