@@ -14,7 +14,80 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      interview_answers: {
+        Row: {
+          answer: string
+          created_at: string
+          id: string
+          question_index: number
+          session_id: string
+          time_taken_seconds: number
+        }
+        Insert: {
+          answer?: string
+          created_at?: string
+          id?: string
+          question_index: number
+          session_id: string
+          time_taken_seconds?: number
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          id?: string
+          question_index?: number
+          session_id?: string
+          time_taken_seconds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_answers_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "interview_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_sessions: {
+        Row: {
+          completion_status: string | null
+          created_at: string
+          difficulty: string
+          duration_minutes: number
+          ended_at: string | null
+          evaluation: Json | null
+          id: string
+          questions: Json
+          role: string
+          started_at: string
+        }
+        Insert: {
+          completion_status?: string | null
+          created_at?: string
+          difficulty: string
+          duration_minutes: number
+          ended_at?: string | null
+          evaluation?: Json | null
+          id?: string
+          questions?: Json
+          role: string
+          started_at?: string
+        }
+        Update: {
+          completion_status?: string | null
+          created_at?: string
+          difficulty?: string
+          duration_minutes?: number
+          ended_at?: string | null
+          evaluation?: Json | null
+          id?: string
+          questions?: Json
+          role?: string
+          started_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
