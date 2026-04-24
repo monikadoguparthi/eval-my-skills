@@ -19,13 +19,18 @@ interface Props {
 export default function InterviewScreen({ sessionId, questions, durationMinutes, onFinish, role }: Props) {
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState("");
+  const [interim, setInterim] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(durationMinutes * 60);
   const [locked, setLocked] = useState(false);
   const questionStartRef = useRef<number>(Date.now());
   const finishedRef = useRef(false);
 
-  const { listening, supported, start, stop } = useSpeechRecognition((t) => setAnswer((prev) => (prev ? prev + " " : "") + t.trim()));
+  const { listening, supported, error: srError, start, stop } = useSpeechRecognition(
+    (t) => setAnswer((prev) => (prev ? prev + " " : "") + t.trim()),
+    (t) => setInterim(t),
+    3000,
+  );
 
   // countdown
   useEffect(() => {
@@ -64,6 +69,7 @@ export default function InterviewScreen({ sessionId, questions, durationMinutes,
   useEffect(() => {
     questionStartRef.current = Date.now();
     setAnswer("");
+    setInterim("");
     if (listening) stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
@@ -135,15 +141,30 @@ export default function InterviewScreen({ sessionId, questions, durationMinutes,
 
             <div className="space-y-2">
               <Textarea
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
+                value={interim ? (answer ? answer + " " + interim : interim) : answer}
+                onChange={(e) => {
+                  setInterim("");
+                  setAnswer(e.target.value);
+                }}
                 placeholder="Type your answer here, or use the microphone…"
                 disabled={locked}
                 className="min-h-[200px] text-base leading-relaxed resize-none"
               />
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{answer.trim().length} characters</span>
-                {!supported && <span>Speech recognition not supported in this browser</span>}
+                {listening ? (
+                  <span className="flex items-center gap-2 text-destructive font-medium">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+                    </span>
+                    Listening…
+                  </span>
+                ) : !supported ? (
+                  <span>Speech recognition is not supported in this browser.</span>
+                ) : srError ? (
+                  <span className="text-destructive">{srError}</span>
+                ) : null}
               </div>
             </div>
 
@@ -158,7 +179,7 @@ export default function InterviewScreen({ sessionId, questions, durationMinutes,
               >
                 {listening ? (
                   <>
-                    <MicOff className="w-4 h-4" /> Stop Speaking
+                    <MicOff className="w-4 h-4" /> Listening…
                   </>
                 ) : (
                   <>
