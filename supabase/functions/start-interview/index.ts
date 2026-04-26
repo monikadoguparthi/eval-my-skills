@@ -1,5 +1,5 @@
 // Edge function: starts a new interview session and generates questions via Lovable AI.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.104.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
