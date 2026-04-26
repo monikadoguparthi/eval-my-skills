@@ -5,6 +5,8 @@ import ResultsScreen, { type Evaluation } from "./ResultsScreen";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import Navbar from "@/components/Navbar";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Phase = "start" | "interview" | "evaluating" | "results";
 
@@ -17,6 +19,7 @@ interface Session {
 
 const Index = () => {
   const [phase, setPhase] = useState<Phase>("start");
+  const { user } = useAuth();
   const [session, setSession] = useState<Session | null>(null);
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [evalMeta, setEvalMeta] = useState<{ totalTime: number; answered: number; total: number } | null>(null);
@@ -59,6 +62,12 @@ const Index = () => {
 
   if (phase === "start") return <StartScreen onStart={handleStart} />;
   if (phase === "interview" && session)
+  {
+    if (!user) {
+      // Safety: if user logs out mid-flow, send them to start
+      setPhase("start");
+      return null;
+    }
     return (
       <InterviewScreen
         sessionId={session.sessionId}
@@ -68,12 +77,16 @@ const Index = () => {
         onFinish={handleFinish}
       />
     );
+  }
   if (phase === "evaluating")
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
-        <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
-        <h2 className="text-xl font-semibold mb-2">{evalMessage.split(".")[0]}.</h2>
-        <p className="text-muted-foreground max-w-md">{evalMessage.split(".").slice(1).join(".").trim()}</p>
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex flex-col items-center justify-center p-6 py-32 text-center">
+          <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+          <h2 className="text-xl font-semibold mb-2">{evalMessage.split(".")[0]}.</h2>
+          <p className="text-muted-foreground max-w-md">{evalMessage.split(".").slice(1).join(".").trim()}</p>
+        </div>
       </div>
     );
   if (phase === "results" && evaluation && evalMeta)
