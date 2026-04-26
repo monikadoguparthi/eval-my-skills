@@ -1,5 +1,5 @@
 // Edge function: evaluates the full interview using Lovable AI and returns strict JSON.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.104.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
