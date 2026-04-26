@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Mic, MicOff, Loader2, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import Navbar from "@/components/Navbar";
+
+const MIN_ANSWER_LENGTH = 10;
 
 interface Props {
   sessionId: string;
@@ -32,7 +35,6 @@ export default function InterviewScreen({ sessionId, questions, durationMinutes,
     3000,
   );
 
-  // countdown
   useEffect(() => {
     const id = setInterval(() => {
       setSecondsLeft((s) => {
@@ -41,7 +43,6 @@ export default function InterviewScreen({ sessionId, questions, durationMinutes,
           if (!finishedRef.current) {
             finishedRef.current = true;
             setLocked(true);
-            // submit current draft if any (best-effort) then end
             (async () => {
               if (answer.trim()) {
                 await supabase.functions.invoke("submit-answer", {
@@ -65,7 +66,6 @@ export default function InterviewScreen({ sessionId, questions, durationMinutes,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // reset timer for each question
   useEffect(() => {
     questionStartRef.current = Date.now();
     setAnswer("");
@@ -75,16 +75,17 @@ export default function InterviewScreen({ sessionId, questions, durationMinutes,
   }, [index]);
 
   const submit = async () => {
-    if (!answer.trim() || submitting || locked) return;
+    const trimmed = answer.trim();
+    if (trimmed.length < MIN_ANSWER_LENGTH || submitting || locked) return;
     setSubmitting(true);
     if (listening) stop();
     const timeTaken = Math.round((Date.now() - questionStartRef.current) / 1000);
     try {
       const { error } = await supabase.functions.invoke("submit-answer", {
-        body: { sessionId, questionIndex: index, answer: answer.trim(), timeTaken },
+        body: { sessionId, questionIndex: index, answer: trimmed, timeTaken },
       });
       if (error) throw error;
-      toast.success("Answer submitted successfully");
+      toast.success("Answer submitted");
       if (index + 1 >= questions.length) {
         finishedRef.current = true;
         setLocked(true);
@@ -109,20 +110,25 @@ export default function InterviewScreen({ sessionId, questions, durationMinutes,
         : "text-foreground";
 
   const progress = useMemo(() => ((index) / questions.length) * 100, [index, questions.length]);
+  const trimmedLen = answer.trim().length;
+  const tooShort = trimmedLen > 0 && trimmedLen < MIN_ANSWER_LENGTH;
+  const canSubmit = trimmedLen >= MIN_ANSWER_LENGTH && !submitting && !locked;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top bar */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur border-b border-border">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="text-sm font-medium text-muted-foreground">{role}</div>
-            <div className="text-sm font-semibold">
-              Question {index + 1} / {questions.length}
+      <Navbar />
+
+      {/* Progress + timer bar */}
+      <div className="sticky top-16 z-30 bg-background/80 backdrop-blur-xl border-b border-border/60">
+        <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="text-xs font-medium text-muted-foreground truncate">{role}</div>
+            <div className="text-xs font-semibold text-foreground whitespace-nowrap">
+              Question {index + 1} of {questions.length}
             </div>
           </div>
-          <div className={`flex items-center gap-2 font-mono text-lg font-semibold ${timerColor}`}>
-            <Clock className="w-5 h-5" />
+          <div className={`flex items-center gap-1.5 font-mono text-sm font-semibold ${timerColor}`}>
+            <Clock className="w-4 h-4" />
             {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
           </div>
         </div>
@@ -130,13 +136,13 @@ export default function InterviewScreen({ sessionId, questions, durationMinutes,
       </div>
 
       <div className="max-w-3xl mx-auto px-6 py-10">
-        <Card key={index} className="shadow-[var(--shadow-elegant)] border-border/50 animate-in fade-in duration-300">
-          <CardContent className="p-8 space-y-6">
+        <Card key={index} className="border-border/60 shadow-[var(--shadow-soft)] rounded-2xl animate-in fade-in duration-300">
+          <div className="p-6 md:p-8 space-y-6">
             <div>
               <div className="text-xs uppercase tracking-wider text-primary font-semibold mb-2">
                 Question {index + 1}
               </div>
-              <h2 className="text-2xl font-semibold leading-snug">{questions[index]}</h2>
+              <h2 className="text-2xl md:text-[26px] font-semibold leading-snug tracking-tight">{questions[index]}</h2>
             </div>
 
             <div className="space-y-2">
@@ -148,10 +154,12 @@ export default function InterviewScreen({ sessionId, questions, durationMinutes,
                 }}
                 placeholder="Type your answer here, or use the microphone…"
                 disabled={locked}
-                className="min-h-[200px] text-base leading-relaxed resize-none"
+                className="min-h-[200px] text-base leading-relaxed resize-none rounded-xl"
               />
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>{answer.trim().length} characters</span>
+                <span className={tooShort ? "text-destructive" : ""}>
+                  {trimmedLen} characters{tooShort ? ` — minimum ${MIN_ANSWER_LENGTH}` : ""}
+                </span>
                 {listening ? (
                   <span className="flex items-center gap-2 text-destructive font-medium">
                     <span className="relative flex h-2 w-2">
@@ -161,7 +169,7 @@ export default function InterviewScreen({ sessionId, questions, durationMinutes,
                     Listening…
                   </span>
                 ) : !supported ? (
-                  <span>Speech recognition is not supported in this browser.</span>
+                  <span>Voice input not supported in this browser.</span>
                 ) : srError ? (
                   <span className="text-destructive">{srError}</span>
                 ) : null}
@@ -174,28 +182,22 @@ export default function InterviewScreen({ sessionId, questions, durationMinutes,
                 variant="outline"
                 onClick={() => (listening ? stop() : start())}
                 disabled={!supported || locked}
-                className="flex-1"
-                title={!supported ? "Speech recognition is not supported in this browser" : ""}
+                className="flex-1 h-11 rounded-xl"
+                title={!supported ? "Voice input not supported" : ""}
               >
                 {listening ? (
-                  <>
-                    <MicOff className="w-4 h-4" /> Listening…
-                  </>
+                  <><MicOff className="w-4 h-4 mr-2" /> Stop</>
                 ) : (
-                  <>
-                    <Mic className="w-4 h-4" /> Start Speaking
-                  </>
+                  <><Mic className="w-4 h-4 mr-2" /> Start Speaking</>
                 )}
               </Button>
               <Button
                 onClick={submit}
-                disabled={!answer.trim() || submitting || locked}
-                className="flex-1 bg-gradient-to-r from-primary to-[hsl(var(--primary-glow))] hover:opacity-90"
+                disabled={!canSubmit}
+                className="flex-1 h-11 rounded-xl bg-gradient-to-r from-primary to-accent hover:opacity-90"
               >
                 {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Submitting…
-                  </>
+                  <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Submitting…</>
                 ) : index + 1 === questions.length ? (
                   "Submit & Finish"
                 ) : (
@@ -205,9 +207,9 @@ export default function InterviewScreen({ sessionId, questions, durationMinutes,
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
-              You cannot return to previous questions. Click submit when you are done.
+              You can't return to previous questions. Submit when you're done.
             </p>
-          </CardContent>
+          </div>
         </Card>
       </div>
     </div>
