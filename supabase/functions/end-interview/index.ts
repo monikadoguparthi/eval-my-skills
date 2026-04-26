@@ -19,6 +19,20 @@ Deno.serve(async (req) => {
       });
     }
 
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Not authenticated" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -31,6 +45,7 @@ Deno.serve(async (req) => {
       .from("interview_sessions")
       .select("*")
       .eq("id", sessionId)
+      .eq("user_id", user.id)
       .single();
     if (sErr || !session) throw new Error("Session not found");
 
@@ -56,7 +71,7 @@ Deno.serve(async (req) => {
     const answeredCount = qaPairs.filter((p) => p.answer !== "(no answer provided)").length;
     const avgTime = answeredCount > 0 ? totalTime / answeredCount : 0;
 
-    const userPrompt = `You are an expert interviewer evaluating a full interview session.
+    const userPrompt = `You are a supportive but honest interview coach evaluating a full mock interview.
 
 Role: ${session.role}
 Difficulty: ${session.difficulty}
@@ -69,16 +84,29 @@ Questions answered: ${answeredCount} / ${questions.length}
 Interview transcript (JSON):
 ${JSON.stringify(qaPairs, null, 2)}
 
-Analyze:
-- Relevance of answers
-- Technical accuracy
-- Communication clarity
-- Confidence level
-- Speed and time management
+Score the candidate (0-100) on: communication, technical depth, confidence, relevance, and speed.
 
-Also consider whether the candidate finished early or ran out of time.
+Scoring rules:
+- Penalize answers shorter than 20 characters as low effort.
+- If average answer time per question is under 25 seconds AND answers are short, treat that as rushed (lower speed score).
+- If average answer time is consistently very high relative to allotted time, lower speed score for poor time management.
+- Reward structured answers with concrete examples or numbers.
+- Empty / missing answers count as 0 for that question.
 
-Provide scores (0-100), speed-related feedback, strengths, weaknesses, and clear suggestions for improvement.
+Tone rules — VERY IMPORTANT:
+- Use constructive, human, encouraging language. Like a coach helping the candidate improve.
+- DO NOT use harsh or dismissive phrases like "zero technical knowledge", "no hiring would occur", "terrible", "useless", "you failed".
+- Replace harsh judgments with actionable suggestions, e.g. "Your answers could benefit from more technical depth", "Try structuring responses with concrete examples", "You answered quickly, but clarity can be improved".
+- Speak directly to the candidate using "you" / "your".
+- Strengths: 1-3 sentences, specific to what they actually did well (or potential you saw).
+- Weaknesses: 1-3 sentences, framed as growth areas with specific tips.
+- Final feedback: 3-5 sentences, motivating, with 1-2 concrete next steps.
+
+Speed feedback wording:
+- If rushed: "Your responses were rushed and lacked clarity."
+- If too slow: "Try improving response speed under time constraints."
+- If balanced: "Good balance between speed and clarity."
+
 Return strictly using the provided tool.`;
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

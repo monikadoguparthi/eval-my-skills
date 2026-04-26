@@ -12,6 +12,21 @@ Deno.serve(async (req) => {
 
   try {
     const { role, difficulty, durationMinutes } = await req.json();
+
+    // Identify user from JWT
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Not authenticated" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (!role || !difficulty || !durationMinutes) {
       return new Response(JSON.stringify({ error: "Missing fields" }), {
         status: 400,
@@ -94,6 +109,7 @@ Deno.serve(async (req) => {
     const { data, error } = await supabase
       .from("interview_sessions")
       .insert({
+        user_id: user.id,
         role,
         difficulty,
         duration_minutes: durationMinutes,
