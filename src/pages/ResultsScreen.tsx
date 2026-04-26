@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, AlertTriangle, Clock, RotateCcw } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Clock, RotateCcw, MessageSquare, Brain, Target, Zap, Sparkles } from "lucide-react";
+import Navbar from "@/components/Navbar";
 
 export interface Evaluation {
   overall_score: number;
@@ -27,121 +28,104 @@ interface Props {
 }
 
 export default function ResultsScreen({ evaluation, totalTimeSeconds, answeredCount, totalQuestions, onRestart }: Props) {
+  const avg = evaluation.average_time_per_question;
   const speedVerdict =
-    evaluation.speed_score >= 75
-      ? { label: "Balanced pace", text: "You maintained a good balance between speed and clarity.", tone: "success" as const }
-      : evaluation.average_time_per_question < 30
-        ? { label: "Too rushed", text: "Your answers were rushed and lacked clarity.", tone: "warning" as const }
-        : { label: "Too slow", text: "You need to improve response speed under time pressure.", tone: "warning" as const };
+    evaluation.speed_score >= 70 && avg >= 25 && avg <= 90
+      ? { label: "Balanced pace", text: "Good balance between speed and clarity.", tone: "success" as const }
+      : avg < 25
+        ? { label: "A bit rushed", text: "Your responses were rushed and could use more depth.", tone: "warning" as const }
+        : { label: "Pace can improve", text: "Try improving your response speed under time constraints.", tone: "warning" as const };
 
   return (
-    <div className="min-h-screen bg-background py-10 px-6">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <main className="max-w-4xl mx-auto px-6 py-10 space-y-6">
         <div className="text-center">
-          <Badge
-            variant="outline"
-            className={
-              evaluation.completion_status === "completed"
-                ? "border-[hsl(var(--success))] text-[hsl(var(--success))]"
-                : "border-[hsl(var(--warning))] text-[hsl(var(--warning))]"
-            }
-          >
+          <Badge variant="outline" className={
+            evaluation.completion_status === "completed"
+              ? "border-[hsl(var(--success))] text-[hsl(var(--success))]"
+              : "border-[hsl(var(--warning))] text-[hsl(var(--warning))]"
+          }>
             {evaluation.completion_status === "completed" ? "Completed" : "Time up"}
           </Badge>
-          <h1 className="text-3xl md:text-4xl font-bold mt-3">Interview Results</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight mt-3">Your Interview Report</h1>
+          <p className="text-muted-foreground mt-1.5">
             Answered {answeredCount} of {totalQuestions} questions in {formatTime(totalTimeSeconds)}.
           </p>
         </div>
 
-        {/* Overall score */}
-        <Card className="shadow-[var(--shadow-elegant)] border-border/50">
-          <CardContent className="p-8 flex flex-col items-center">
+        {/* Overall + stats */}
+        <div className="grid md:grid-cols-3 gap-4">
+          <Card className="md:col-span-1 p-6 flex flex-col items-center justify-center border-border/60 rounded-2xl shadow-[var(--shadow-soft)]">
             <ScoreRing value={Math.round(evaluation.overall_score)} />
-            <div className="text-sm text-muted-foreground mt-4">Overall Score</div>
-          </CardContent>
-        </Card>
-
-        {/* Sub-scores */}
-        <Card className="border-border/50">
-          <CardContent className="p-6 space-y-4">
-            <ScoreBar label="Communication" value={evaluation.communication_score} />
-            <ScoreBar label="Technical" value={evaluation.technical_score} />
-            <ScoreBar label="Confidence" value={evaluation.confidence_score} />
-            <ScoreBar label="Relevance" value={evaluation.relevance_score} />
-            <ScoreBar label="Speed" value={evaluation.speed_score} />
-          </CardContent>
-        </Card>
-
-        {/* Time stats */}
-        <Card className="border-border/50">
-          <CardContent className="p-6 grid grid-cols-3 gap-4 text-center">
-            <Stat icon={<Clock className="w-4 h-4" />} label="Total time" value={formatTime(totalTimeSeconds)} />
-            <Stat label="Avg / question" value={`${Math.round(evaluation.average_time_per_question)}s`} />
-            <Stat label="Answered" value={`${answeredCount} / ${totalQuestions}`} />
-          </CardContent>
-        </Card>
-
-        {/* Speed verdict */}
-        <Card
-          className={`border-l-4 ${
-            speedVerdict.tone === "success"
-              ? "border-l-[hsl(var(--success))] bg-[hsl(var(--success))]/5"
-              : "border-l-[hsl(var(--warning))] bg-[hsl(var(--warning))]/5"
-          }`}
-        >
-          <CardContent className="p-5">
-            <div className="font-semibold mb-1">{speedVerdict.label}</div>
-            <p className="text-sm text-muted-foreground">{speedVerdict.text}</p>
-          </CardContent>
-        </Card>
-
-        {/* Strengths / Weaknesses */}
-        <div className="grid md:grid-cols-2 gap-4">
-          <Card className="border-l-4 border-l-[hsl(var(--success))]">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-2 text-[hsl(var(--success))] font-semibold">
-                <CheckCircle2 className="w-4 h-4" /> Strengths
-              </div>
-              <p className="text-sm text-foreground/80 leading-relaxed">{evaluation.strengths}</p>
-            </CardContent>
+            <div className="text-sm text-muted-foreground mt-3 font-medium">Overall Score</div>
           </Card>
-          <Card className="border-l-4 border-l-[hsl(var(--warning))]">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-2 text-[hsl(var(--warning))] font-semibold">
-                <AlertTriangle className="w-4 h-4" /> Areas to improve
-              </div>
-              <p className="text-sm text-foreground/80 leading-relaxed">{evaluation.weaknesses}</p>
-            </CardContent>
+          <Card className="md:col-span-2 p-6 border-border/60 rounded-2xl shadow-[var(--shadow-soft)] grid grid-cols-3 gap-4">
+            <Stat icon={<Clock className="w-4 h-4" />} label="Total time" value={formatTime(totalTimeSeconds)} />
+            <Stat icon={<Zap className="w-4 h-4" />} label="Avg / question" value={`${Math.round(avg)}s`} />
+            <Stat icon={<CheckCircle2 className="w-4 h-4" />} label="Answered" value={`${answeredCount}/${totalQuestions}`} />
           </Card>
         </div>
 
-        {/* Final feedback */}
-        <Card className="border-border/50">
-          <CardContent className="p-6">
-            <div className="font-semibold mb-2">Final feedback</div>
-            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">{evaluation.final_feedback}</p>
-          </CardContent>
+        {/* Sub-scores */}
+        <Card className="p-6 border-border/60 rounded-2xl shadow-[var(--shadow-soft)] space-y-4">
+          <div className="text-sm font-semibold mb-1">Performance breakdown</div>
+          <ScoreBar label="Communication" value={evaluation.communication_score} icon={<MessageSquare className="w-3.5 h-3.5" />} />
+          <ScoreBar label="Technical" value={evaluation.technical_score} icon={<Brain className="w-3.5 h-3.5" />} />
+          <ScoreBar label="Confidence" value={evaluation.confidence_score} icon={<Sparkles className="w-3.5 h-3.5" />} />
+          <ScoreBar label="Relevance" value={evaluation.relevance_score} icon={<Target className="w-3.5 h-3.5" />} />
+          <ScoreBar label="Speed" value={evaluation.speed_score} icon={<Zap className="w-3.5 h-3.5" />} />
+        </Card>
+
+        {/* Speed verdict */}
+        <Card className={`p-5 rounded-2xl border-l-4 ${
+          speedVerdict.tone === "success"
+            ? "border-l-[hsl(var(--success))] bg-[hsl(var(--success))]/5"
+            : "border-l-[hsl(var(--warning))] bg-[hsl(var(--warning))]/5"
+        }`}>
+          <div className="font-semibold mb-1">{speedVerdict.label}</div>
+          <p className="text-sm text-muted-foreground">{speedVerdict.text}</p>
+        </Card>
+
+        {/* Strengths / weaknesses */}
+        <div className="grid md:grid-cols-2 gap-4">
+          <Card className="p-5 rounded-2xl border-l-4 border-l-[hsl(var(--success))]">
+            <div className="flex items-center gap-2 mb-2 text-[hsl(var(--success))] font-semibold">
+              <CheckCircle2 className="w-4 h-4" /> What you did well
+            </div>
+            <p className="text-sm text-foreground/80 leading-relaxed">{evaluation.strengths}</p>
+          </Card>
+          <Card className="p-5 rounded-2xl border-l-4 border-l-[hsl(var(--warning))]">
+            <div className="flex items-center gap-2 mb-2 text-[hsl(var(--warning))] font-semibold">
+              <AlertTriangle className="w-4 h-4" /> Where to grow
+            </div>
+            <p className="text-sm text-foreground/80 leading-relaxed">{evaluation.weaknesses}</p>
+          </Card>
+        </div>
+
+        <Card className="p-6 border-border/60 rounded-2xl shadow-[var(--shadow-soft)]">
+          <div className="font-semibold mb-2">Coach's note</div>
+          <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">{evaluation.final_feedback}</p>
         </Card>
 
         <Button
           onClick={onRestart}
           size="lg"
-          className="w-full bg-gradient-to-r from-primary to-[hsl(var(--primary-glow))] hover:opacity-90"
+          className="w-full h-12 rounded-xl bg-gradient-to-r from-primary to-accent hover:opacity-90"
         >
-          <RotateCcw className="w-4 h-4" /> Start New Interview
+          <RotateCcw className="w-4 h-4 mr-2" /> Start new interview
         </Button>
-      </div>
+      </main>
     </div>
   );
 }
 
-function ScoreBar({ label, value }: { label: string; value: number }) {
+function ScoreBar({ label, value, icon }: { label: string; value: number; icon?: React.ReactNode }) {
   const v = Math.round(value);
   return (
     <div>
       <div className="flex justify-between text-sm mb-1.5">
-        <span className="font-medium">{label}</span>
+        <span className="font-medium flex items-center gap-1.5 text-foreground/80">{icon} {label}</span>
         <span className="text-muted-foreground tabular-nums">{v}/100</span>
       </div>
       <Progress value={v} className="h-2" />
@@ -157,22 +141,12 @@ function ScoreRing({ value }: { value: number }) {
     <div className="relative w-40 h-40">
       <svg className="w-full h-full -rotate-90" viewBox="0 0 140 140">
         <circle cx="70" cy="70" r={r} className="stroke-muted" strokeWidth="10" fill="none" />
-        <circle
-          cx="70"
-          cy="70"
-          r={r}
-          stroke="url(#g)"
-          strokeWidth="10"
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-          className="transition-all duration-700"
-        />
+        <circle cx="70" cy="70" r={r} stroke="url(#g)" strokeWidth="10" fill="none" strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={offset} className="transition-all duration-700" />
         <defs>
           <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="hsl(var(--primary))" />
-            <stop offset="100%" stopColor="hsl(var(--primary-glow))" />
+            <stop offset="100%" stopColor="hsl(var(--accent))" />
           </linearGradient>
         </defs>
       </svg>
@@ -188,11 +162,9 @@ function ScoreRing({ value }: { value: number }) {
 
 function Stat({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string }) {
   return (
-    <div>
-      <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-        {icon} {label}
-      </div>
-      <div className="text-lg font-semibold mt-1">{value}</div>
+    <div className="text-center">
+      <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">{icon} {label}</div>
+      <div className="text-lg font-semibold mt-1 tabular-nums">{value}</div>
     </div>
   );
 }
