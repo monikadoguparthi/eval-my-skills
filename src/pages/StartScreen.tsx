@@ -74,7 +74,7 @@ export default function StartScreen({ onStart }: Props) {
             <Sparkles className="w-3.5 h-3.5" /> AI-powered mock interviews
           </div>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-3">
-            Practice with intent.
+            Turn practice into performance.
           </h1>
           <p className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto">
             Realistic interview pressure, instant AI feedback, measurable progress.
