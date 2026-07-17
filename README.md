@@ -8,7 +8,7 @@ HireSense AI is an AI-powered mock interview platform that helps students and jo
 
 ## 🌐 Live Demo
 
-🔗 https://eval-my-skills.lovable.app
+🔗 [https://eval-my-skills.lovable.app](https://eval-my-skills.vercel.app)
 
 ---
 
