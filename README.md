@@ -199,7 +199,7 @@ VITE_OPENAI_API_KEY=your_openai_api_key
 **Monika Doguparthi**
 
 - GitHub: https://github.com/monikadoguparthi
-- LinkedIn: *(Add your LinkedIn profile here)*
+- LinkedIn: https://www.linkedin.com/in/monika-doguparthi-963259355/
 
 ---
 
